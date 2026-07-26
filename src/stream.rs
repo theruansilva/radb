@@ -1,4 +1,4 @@
-use crate::constants::{CMD_CLSE, CMD_WRTE};
+use crate::constants::{CMD_CLSE, CMD_OKAY, CMD_WRTE};
 use crate::error::{AdbError, Result};
 use crate::message::AdbMessage;
 use crate::writer::AdbWriter;
@@ -47,33 +47,38 @@ impl<W: AsyncWrite + Unpin + Send + 'static> AdbStream<W> {
             return Ok(data);
         }
 
-        match self.rx.recv().await {
-            Some(Ok(msg)) => {
-                if msg.command == CMD_CLSE {
-                    self.is_closed = true;
-                    Ok(Bytes::new())
-                } else if msg.command == CMD_WRTE {
-                    let payload = msg.payload;
-                    // Auto-send A_OKAY flow-control response
-                    {
-                        let mut writer_guard = self.writer.lock().await;
-                        writer_guard.write_okay(self.local_id, self.remote_id).await?;
+        loop {
+            match self.rx.recv().await {
+                Some(Ok(msg)) => {
+                    if msg.command == CMD_CLSE {
+                        self.is_closed = true;
+                        return Ok(Bytes::new());
+                    } else if msg.command == CMD_OKAY {
+                        // Flow control ACK from device for our WRTE packet.
+                        continue;
+                    } else if msg.command == CMD_WRTE {
+                        let payload = msg.payload;
+                        // Auto-send A_OKAY flow-control response
+                        {
+                            let mut writer_guard = self.writer.lock().await;
+                            writer_guard.write_okay(self.local_id, self.remote_id).await?;
+                        }
+                        return Ok(payload);
+                    } else {
+                        return Err(AdbError::Protocol(format!(
+                            "Unexpected ADB command in stream: {}",
+                            AdbMessage::command_name(msg.command)
+                        )));
                     }
-                    Ok(payload)
-                } else {
-                    Err(AdbError::Protocol(format!(
-                        "Unexpected ADB command in stream: {}",
-                        AdbMessage::command_name(msg.command)
-                    )))
                 }
-            }
-            Some(Err(err)) => {
-                self.is_closed = true;
-                Err(err)
-            }
-            None => {
-                self.is_closed = true;
-                Ok(Bytes::new())
+                Some(Err(err)) => {
+                    self.is_closed = true;
+                    return Err(err);
+                }
+                None => {
+                    self.is_closed = true;
+                    return Ok(Bytes::new());
+                }
             }
         }
     }
