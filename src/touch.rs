@@ -85,7 +85,6 @@ pub trait RadbTouchExt {
     /// Roll trackball pointer by (dx, dy).
     async fn roll(&self, dx: i32, dy: i32) -> Result<AdbShellResponse>;
 }
-
 #[async_trait]
 impl<T: Radb + ?Sized> RadbTouchExt for T {
     async fn tap(&self, x: u32, y: u32) -> Result<AdbShellResponse> {
