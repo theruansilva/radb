@@ -1,17 +1,12 @@
 use std::path::Path;
 
-use radb::{Radb, RadbImpl, keypair::AdbKeyPair};
+use radb::Radb;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 1. Carrega ou gera a chave RSA do ADB
-    let home_dir = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-    let key_path = std::path::PathBuf::from(home_dir).join(".android/adbkey");
-    let key_pair = AdbKeyPair::read_from_file(&key_path).ok();
-
-    // 2. Conecta ao dispositivo (ex: emulador local na porta 5555)
+    // 1. Conecta ao dispositivo com par de chaves automático (~/.android/adbkey)
     println!("Conectando ao dispositivo...");
-    let device = RadbImpl::connect("127.0.0.1", 5555, key_pair).await?;
+    let device = radb::connect("127.0.0.1", 5555).await?;
 
     let remote_path = "/sdcard/screenshot_temp.png";
     let local_path = Path::new("./screenshot.png");

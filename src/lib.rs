@@ -19,11 +19,10 @@ use constants::{MAX_EMULATOR_PORT, MIN_EMULATOR_PORT};
 use error::{AdbError, InstallResult, Result, RootResult, SyncResult, UninstallResult};
 use keypair::AdbKeyPair;
 use reader::AdbReader;
-use shell::{AdbShell, AdbShellResponse};
+use shell::{AdbShellResponse, execute_shell};
 use std::path::Path;
 use std::sync::Arc;
 use stream::AdbStream;
-use sync::AdbSync;
 use tokio::net::TcpStream;
 use tokio::net::tcp::OwnedWriteHalf;
 use tokio::sync::Mutex;
@@ -60,7 +59,9 @@ pub struct RadbImpl {
 
 impl RadbImpl {
     pub async fn connect(host: &str, port: u16, key_pair: Option<AdbKeyPair>) -> Result<Self> {
-        let key_pair = key_pair.map(Arc::new);
+        let key_pair = key_pair
+            .or_else(|| AdbKeyPair::read_default().ok())
+            .map(Arc::new);
         let radb = Self {
             host: host.to_string(),
             port,
@@ -72,6 +73,7 @@ impl RadbImpl {
     }
 
     pub async fn discover(host: &str, key_pair: Option<AdbKeyPair>) -> Result<Option<Self>> {
+        let key_pair = key_pair.or_else(|| AdbKeyPair::read_default().ok());
         for port in (MIN_EMULATOR_PORT..=MAX_EMULATOR_PORT).step_by(2) {
             if let Ok(radb) = Self::connect(host, port, key_pair.clone()).await {
                 if radb.shell("echo ping").await.is_ok() {
@@ -83,6 +85,7 @@ impl RadbImpl {
     }
 
     pub async fn list(host: &str, key_pair: Option<AdbKeyPair>) -> Result<Vec<Self>> {
+        let key_pair = key_pair.or_else(|| AdbKeyPair::read_default().ok());
         let mut devices = Vec::new();
         for port in (MIN_EMULATOR_PORT..=MAX_EMULATOR_PORT).step_by(2) {
             if let Ok(radb) = Self::connect(host, port, key_pair.clone()).await {
@@ -111,6 +114,21 @@ impl RadbImpl {
         drop(conn_guard);
         Ok(self.connection.clone())
     }
+}
+
+/// Connect to an ADB device using the default keypair (`~/.android/adbkey`).
+pub async fn connect(host: &str, port: u16) -> Result<RadbImpl> {
+    RadbImpl::connect(host, port, None).await
+}
+
+/// Discover the first available emulator using the default keypair (`~/.android/adbkey`).
+pub async fn discover(host: &str) -> Result<Option<RadbImpl>> {
+    RadbImpl::discover(host, None).await
+}
+
+/// List all available emulators using the default keypair (`~/.android/adbkey`).
+pub async fn list(host: &str) -> Result<Vec<RadbImpl>> {
+    RadbImpl::list(host, None).await
 }
 
 #[async_trait]
@@ -143,8 +161,7 @@ impl Radb for RadbImpl {
         };
 
         let mut stream = self.open(&dest).await?;
-        let shell = AdbShell::new(is_v2);
-        shell.execute(&mut stream).await
+        execute_shell(&mut stream, is_v2).await
     }
 
     async fn push(
@@ -155,12 +172,12 @@ impl Radb for RadbImpl {
         last_modified_ms: u64,
     ) -> Result<SyncResult> {
         let mut stream = self.open("sync:").await?;
-        AdbSync::push(&mut stream, src, remote_path, mode, last_modified_ms).await
+        sync::push(&mut stream, src, remote_path, mode, last_modified_ms).await
     }
 
     async fn pull(&self, dst: &Path, remote_path: &str) -> Result<SyncResult> {
         let mut stream = self.open("sync:").await?;
-        AdbSync::pull(&mut stream, dst, remote_path).await
+        sync::pull(&mut stream, dst, remote_path).await
     }
 
     async fn install(&self, apk_path: &Path, options: &[&str]) -> Result<InstallResult> {
@@ -176,8 +193,7 @@ impl Radb for RadbImpl {
         let apk_bytes = tokio::fs::read(apk_path).await?;
         stream.write_payload(&apk_bytes).await?;
 
-        let shell = AdbShell::new(false);
-        let response = shell.execute(&mut stream).await?;
+        let response = execute_shell(&mut stream, false).await?;
 
         if response.output.contains("Success") {
             Ok(InstallResult::Success)
@@ -202,8 +218,7 @@ impl Radb for RadbImpl {
 
     async fn root(&self) -> Result<RootResult> {
         let mut stream = self.open("root:").await?;
-        let shell = AdbShell::new(false);
-        let response = shell.execute(&mut stream).await?;
+        let response = execute_shell(&mut stream, false).await?;
         if response.output.contains("restarting adbd as root")
             || response.output.contains("already running as root")
         {
@@ -215,8 +230,7 @@ impl Radb for RadbImpl {
 
     async fn unroot(&self) -> Result<RootResult> {
         let mut stream = self.open("unroot:").await?;
-        let shell = AdbShell::new(false);
-        let response = shell.execute(&mut stream).await?;
+        let response = execute_shell(&mut stream, false).await?;
         if response.output.contains("restarting adbd as non-root") {
             Ok(RootResult::Success)
         } else {

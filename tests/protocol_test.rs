@@ -27,7 +27,12 @@ async fn test_reader_writer_roundtrip() {
     let mut writer = AdbWriter::new(client);
     let mut reader = AdbReader::new(server);
 
-    let original = AdbMessage::new(CMD_OPEN, 1, 0, Bytes::from_static(b"shell,v2,raw:echo hello\0"));
+    let original = AdbMessage::new(
+        CMD_OPEN,
+        1,
+        0,
+        Bytes::from_static(b"shell,v2,raw:echo hello\0"),
+    );
     writer.write_message(&original).await.unwrap();
 
     let read_msg = reader.read_message().await.unwrap();
@@ -90,4 +95,12 @@ fn test_device_descriptor_parsing() {
     assert_eq!(devices[0].state, "device");
     assert_eq!(devices[1].serial, "192.168.1.50:5555");
     assert_eq!(devices[1].state, "unauthorized");
+}
+#[test]
+fn test_default_keypair_read_or_generate() {
+    let keypair = AdbKeyPair::read_default().unwrap();
+    assert!(keypair.public_key_bytes.len() >= 524);
+
+    let default_keypair = AdbKeyPair::default();
+    assert!(default_keypair.public_key_bytes.len() >= 524);
 }

@@ -1,8 +1,5 @@
-use radb::keypair::AdbKeyPair;
+use radb::Radb;
 use radb::server::AdbServer;
-use radb::{Radb, RadbImpl};
-use std::env;
-use std::path::PathBuf;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -28,26 +25,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // 2. Obtain keypair (~/.android/adbkey or freshly generated)
-    let home_dir = env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-    let adb_key_path = PathBuf::from(home_dir).join(".android").join("adbkey");
-
-    let key_pair = if adb_key_path.exists() {
-        println!("\nLoading RSA key from: {}", adb_key_path.display());
-        AdbKeyPair::read_from_file(&adb_key_path).ok()
-    } else {
-        println!("\nGenerating temporary RSA 2048 keypair...");
-        AdbKeyPair::generate().ok()
-    };
-
-    // 3. Connect to emulator on port 5555 (or auto-discover)
+    // 2. Connect to emulator on port 5555 (or auto-discover) using automatic keypair
     println!("\nAttempting connection to 127.0.0.1:5555...");
-    let radb = match RadbImpl::connect("127.0.0.1", 5555, key_pair.clone()).await {
+    let radb = match radb::connect("127.0.0.1", 5555).await {
         Ok(client) => client,
         Err(e) => {
             println!("Could not connect directly to 5555: {e}");
             println!("Searching for active emulator (5555..5683)...");
-            match RadbImpl::discover("127.0.0.1", key_pair).await? {
+            match radb::discover("127.0.0.1").await? {
                 Some(client) => client,
                 None => {
                     eprintln!("Error: No emulator found on ports 5555..5683.");

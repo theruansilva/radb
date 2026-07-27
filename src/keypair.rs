@@ -3,7 +3,7 @@ use pkcs8::{DecodePrivateKey, EncodePrivateKey};
 use rsa::traits::PublicKeyParts;
 use rsa::{BigUint, RsaPrivateKey, RsaPublicKey};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const KEY_LENGTH_BITS: usize = 2048;
 const KEY_LENGTH_WORDS: usize = 64; // 2048 / 32
@@ -38,24 +38,44 @@ impl AdbKeyPair {
             .map_err(|e| AdbError::Auth(format!("Failed to parse PKCS#8 private key: {e}")))?;
         Ok(Self::new(private_key))
     }
+    /// Loads the default ADB keypair from `~/.android/adbkey`.
+    ///
+    /// If the key file exists, it will be loaded. If it does not exist,
+    /// a new RSA 2048 keypair will be generated and saved to `~/.android/adbkey`.
+    pub fn read_default() -> Result<Self> {
+        if let Some(key_path) = default_key_path() {
+            if key_path.exists() {
+                if let Ok(keypair) = Self::read_from_file(&key_path) {
+                    return Ok(keypair);
+                }
+            }
+            let keypair = Self::generate()?;
+            if let Some(parent) = key_path.parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+            let _ = keypair.save_to_file(&key_path);
+            Ok(keypair)
+        } else {
+            Self::generate()
+        }
+    }
 
     pub fn save_to_file(&self, private_key_path: impl AsRef<Path>) -> Result<()> {
         let pem = self
             .private_key
             .to_pkcs8_pem(pkcs8::LineEnding::LF)
-            .map_err(|e| AdbError::Auth(format!("Failed to encode private key to PKCS#8 PEM: {e}")))?;
+            .map_err(|e| {
+                AdbError::Auth(format!("Failed to encode private key to PKCS#8 PEM: {e}"))
+            })?;
         fs::write(private_key_path, pem.as_str())?;
         Ok(())
     }
-
     pub fn sign_payload(&self, token: &[u8]) -> Result<Vec<u8>> {
-        // SHA-1 DigestInfo header (15 bytes) matching Kotlin SIGNATURE_PADDING
         let sha1_digest_info: [u8; 15] = [
-            0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2B, 0x0E, 0x03, 0x02, 0x1A, 0x05, 0x00, 0x04, 0x14,
+            0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2B, 0x0E, 0x03, 0x02, 0x1A, 0x05, 0x00, 0x04,
+            0x14,
         ];
 
-        // Construct 256-byte PKCS#1 v1.5 padded block:
-        // [0x00, 0x01, 0xFF * 218, 0x00, SHA1_HEADER (15 bytes), token (20 bytes)]
         let mut padded = Vec::with_capacity(256);
         padded.push(0x00);
         padded.push(0x01);
@@ -67,9 +87,9 @@ impl AdbKeyPair {
         let padded_biguint = BigUint::from_bytes_be(&padded);
         let mut rng = rand::thread_rng();
 
-        // Perform raw RSA modular exponentiation s = m^d mod n
-        let sig_biguint = rsa::hazmat::rsa_decrypt(Some(&mut rng), &self.private_key, &padded_biguint)
-            .map_err(|e| AdbError::Auth(format!("RSA raw signing failed: {e}")))?;
+        let sig_biguint =
+            rsa::hazmat::rsa_decrypt(Some(&mut rng), &self.private_key, &padded_biguint)
+                .map_err(|e| AdbError::Auth(format!("RSA raw signing failed: {e}")))?;
 
         let mut sig_bytes = sig_biguint.to_bytes_be();
         if sig_bytes.len() < 256 {
@@ -148,4 +168,21 @@ impl AdbKeyPair {
             .map(|chunk| u32::from_le_bytes(chunk.try_into().unwrap()))
             .collect()
     }
+}
+impl Default for AdbKeyPair {
+    fn default() -> Self {
+        Self::read_default()
+            .unwrap_or_else(|_| Self::generate().expect("Failed to generate default RSA keypair"))
+    }
+}
+
+fn default_key_path() -> Option<PathBuf> {
+    #[cfg(windows)]
+    let home = std::env::var("USERPROFILE")
+        .or_else(|_| std::env::var("HOME"))
+        .ok()?;
+    #[cfg(not(windows))]
+    let home = std::env::var("HOME").ok()?;
+
+    Some(PathBuf::from(home).join(".android").join("adbkey"))
 }

@@ -1,8 +1,5 @@
-use radb::keypair::AdbKeyPair;
 use radb::server::AdbServer;
-use radb::{KeyCode, Radb, RadbImpl, RadbTouchExt, SwipeDirection};
-use std::env;
-use std::path::PathBuf;
+use radb::{KeyCode, Radb, RadbTouchExt, SwipeDirection};
 use tokio::time::{Duration, sleep};
 
 #[tokio::main]
@@ -24,18 +21,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let home_dir = env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-    let adb_key_path = PathBuf::from(home_dir).join(".android").join("adbkey");
-    let key_pair = if adb_key_path.exists() {
-        AdbKeyPair::read_from_file(&adb_key_path).ok()
-    } else {
-        AdbKeyPair::generate().ok()
-    };
-
     println!("\n[+] Conectando ao emulador/dispositivo Android (127.0.0.1:5555)...");
-    let radb = match RadbImpl::connect("127.0.0.1", 5555, key_pair.clone()).await {
+    let radb = match radb::connect("127.0.0.1", 5555).await {
         Ok(client) => client,
-        Err(_) => match RadbImpl::discover("127.0.0.1", key_pair).await? {
+        Err(_) => match radb::discover("127.0.0.1").await? {
             Some(client) => client,
             None => {
                 eprintln!("[!] Erro: Nenhum emulador ativo encontrado nas portas 5555..5683.");
