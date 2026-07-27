@@ -6,6 +6,7 @@ authors = ["Ruan Silva <progmruansilva@gmail.com>"]
 license = "MIT"
 description = "Pure Rust implementation of the Android Debug Bridge (ADB) protocol"
 readme = "README.md"
+repository = "https://github.com/theruansilva/radb"
 keywords = ["adb", "android", "emulator", "automation", "tokio"]
 categories = ["development-tools", "asynchronous"]
 [dependencies]
