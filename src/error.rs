@@ -42,42 +42,10 @@ pub enum InstallResult {
     Failure(String),
 }
 
-impl InstallResult {
-    pub fn is_success(&self) -> bool {
-        matches!(self, InstallResult::Success)
-    }
-
-    pub fn or_throw(self) -> std::result::Result<(), AdbOperationFailedError> {
-        match self {
-            InstallResult::Success => Ok(()),
-            InstallResult::Failure(reason) => Err(AdbOperationFailedError {
-                reason,
-                exit_code: None,
-            }),
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UninstallResult {
     Success,
     Failure { reason: String, exit_code: i32 },
-}
-
-impl UninstallResult {
-    pub fn is_success(&self) -> bool {
-        matches!(self, UninstallResult::Success)
-    }
-
-    pub fn or_throw(self) -> std::result::Result<(), AdbOperationFailedError> {
-        match self {
-            UninstallResult::Success => Ok(()),
-            UninstallResult::Failure { reason, exit_code } => Err(AdbOperationFailedError {
-                reason,
-                exit_code: Some(exit_code),
-            }),
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -86,40 +54,8 @@ pub enum RootResult {
     Failure(String),
 }
 
-impl RootResult {
-    pub fn is_success(&self) -> bool {
-        matches!(self, RootResult::Success)
-    }
-
-    pub fn or_throw(self) -> std::result::Result<(), AdbOperationFailedError> {
-        match self {
-            RootResult::Success => Ok(()),
-            RootResult::Failure(reason) => Err(AdbOperationFailedError {
-                reason,
-                exit_code: None,
-            }),
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SyncResult {
     Success,
     Failure(String),
-}
-
-impl SyncResult {
-    pub fn is_success(&self) -> bool {
-        matches!(self, SyncResult::Success)
-    }
-
-    pub fn or_throw(self) -> std::result::Result<(), AdbOperationFailedError> {
-        match self {
-            SyncResult::Success => Ok(()),
-            SyncResult::Failure(reason) => Err(AdbOperationFailedError {
-                reason,
-                exit_code: None,
-            }),
-        }
-    }
 }
