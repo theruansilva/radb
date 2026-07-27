@@ -6,13 +6,18 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tracing::{debug, error};
 
+/// Manages a local TCP listener background task that forwards incoming connections to a device port.
 pub struct TcpForwarder {
+    /// Local host port receiving incoming TCP connections.
     pub local_port: u16,
+    /// Target port on the Android device to forward traffic to.
     pub target_port: u16,
     task_handle: Option<JoinHandle<()>>,
 }
 
 impl TcpForwarder {
+    /// Binds a local TCP listener on `127.0.0.1:local_port` (pass 0 for OS auto-assigned port)
+    /// and spawns a background forwarding task routing traffic to `tcp:target_port` on the device.
     pub async fn start<D: Radb + 'static>(
         radb: Arc<D>,
         local_port: u16,
@@ -108,6 +113,7 @@ impl TcpForwarder {
         })
     }
 
+    /// Stops the local TCP forwarding task and releases the bound port.
     pub fn stop(&mut self) {
         if let Some(handle) = self.task_handle.take() {
             handle.abort();

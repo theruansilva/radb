@@ -11,18 +11,21 @@ use tracing::{debug, error};
 type StreamSender = mpsc::Sender<Result<AdbMessage>>;
 type StreamReceiver = mpsc::Receiver<Result<AdbMessage>>;
 
+/// Dispatcher routing incoming ADB wire messages to their corresponding active stream channels by `local_id`.
 #[derive(Clone, Default)]
 pub struct MessageQueue {
     streams: Arc<Mutex<HashMap<u32, StreamSender>>>,
 }
 
 impl MessageQueue {
+    /// Creates a new empty `MessageQueue`.
     pub fn new() -> Self {
         Self {
             streams: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
+    /// Registers a listener channel for incoming messages targeted at `local_id`.
     pub async fn start_listening(&self, local_id: u32) -> Result<StreamReceiver> {
         let mut streams = self.streams.lock().await;
         if streams.contains_key(&local_id) {
@@ -35,11 +38,13 @@ impl MessageQueue {
         Ok(rx)
     }
 
+    /// Removes the message listener channel for `local_id`.
     pub async fn stop_listening(&self, local_id: u32) {
         let mut streams = self.streams.lock().await;
         streams.remove(&local_id);
     }
 
+    /// Spawns an asynchronous background task reading messages from `reader` and dispatching to channels.
     pub fn spawn_reader<R: AsyncRead + Unpin + Send + 'static>(&self, mut reader: AdbReader<R>) {
         let streams = self.streams.clone();
         tokio::spawn(async move {

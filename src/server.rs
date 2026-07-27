@@ -5,20 +5,26 @@ use std::process::Command;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
+/// Default TCP port for the local ADB host server daemon.
 pub const ADB_SERVER_PORT: u16 = 5037;
 
+/// Descriptor representing a device returned by `AdbServer::list_devices()`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AdbDeviceDescriptor {
+    /// Device serial number or address (e.g. `"emulator-5554"` or `"127.0.0.1:5555"`).
     pub serial: String,
+    /// Connection state (e.g. `"device"`, `"offline"`, `"unauthorized"`).
     pub state: String,
 }
 
+/// Client for communicating with a local ADB host server daemon (port 5037).
 pub struct AdbServer {
     host: String,
     port: u16,
 }
 
 impl AdbServer {
+    /// Creates a new `AdbServer` instance pointing to the given `host` and `port`.
     pub fn new(host: impl Into<String>, port: u16) -> Self {
         Self {
             host: host.into(),
@@ -26,16 +32,19 @@ impl AdbServer {
         }
     }
 
+    /// Creates an `AdbServer` pointing to `127.0.0.1:5037`.
     pub fn default_local() -> Self {
         Self::new("127.0.0.1", ADB_SERVER_PORT)
     }
 
+    /// Checks whether the ADB server daemon is currently running on host:port.
     pub async fn is_running(&self) -> bool {
         TcpStream::connect((self.host.as_str(), self.port))
             .await
             .is_ok()
     }
 
+    /// Ensures the local ADB server daemon is running, attempting to start it if offline.
     pub async fn ensure_server_running(&self) -> Result<()> {
         if self.is_running().await {
             return Ok(());
@@ -56,6 +65,7 @@ impl AdbServer {
         ))
     }
 
+    /// Queries the ADB host server for a list of connected devices (`host:devices`).
     pub async fn list_devices(&self) -> Result<Vec<AdbDeviceDescriptor>> {
         let addr = format!("{}:{}", self.host, self.port);
         let mut stream = TcpStream::connect(&addr).await?;
@@ -78,6 +88,7 @@ impl AdbServer {
         Ok(devices)
     }
 
+    /// Sends a length-prefixed command string to an ADB server TCP stream and reads the response.
     pub async fn send_command(stream: &mut TcpStream, command: &str) -> Result<String> {
         let req = format!("{:04x}{command}", command.len());
         stream.write_all(req.as_bytes()).await?;
@@ -122,9 +133,11 @@ impl AdbServer {
     }
 }
 
+/// Utilities for locating and executing the system `adb` command-line binary.
 pub struct AdbBinary;
 
 impl AdbBinary {
+    /// Searches `PATH`, `ANDROID_HOME`, and `ANDROID_SDK_ROOT` for the `adb` executable.
     pub fn find_adb_binary() -> Result<PathBuf> {
         if Command::new("adb").arg("version").output().is_ok() {
             return Ok(PathBuf::from("adb"));
@@ -153,6 +166,7 @@ impl AdbBinary {
         ))
     }
 
+    /// Executes `adb start-server` to spin up the local ADB daemon process.
     pub fn start_server() -> Result<()> {
         let adb_path = Self::find_adb_binary()?;
         let status = Command::new(adb_path)

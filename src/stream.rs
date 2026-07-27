@@ -5,10 +5,13 @@ use crate::writer::AdbWriter;
 use bytes::{Bytes, BytesMut};
 use std::sync::Arc;
 use tokio::io::AsyncWrite;
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{Mutex, mpsc};
 
+/// An active multiplexed stream channel connected to an ADB service on the target device.
 pub struct AdbStream<W> {
+    /// Local channel identifier.
     pub local_id: u32,
+    /// Remote channel identifier assigned by target device.
     pub remote_id: u32,
     writer: Arc<Mutex<AdbWriter<W>>>,
     rx: mpsc::Receiver<Result<AdbMessage>>,
@@ -18,6 +21,7 @@ pub struct AdbStream<W> {
 }
 
 impl<W: AsyncWrite + Unpin + Send + 'static> AdbStream<W> {
+    /// Creates a new `AdbStream` channel.
     pub fn new(
         local_id: u32,
         remote_id: u32,
@@ -61,7 +65,9 @@ impl<W: AsyncWrite + Unpin + Send + 'static> AdbStream<W> {
                         // Auto-send A_OKAY flow-control response
                         {
                             let mut writer_guard = self.writer.lock().await;
-                            writer_guard.write_okay(self.local_id, self.remote_id).await?;
+                            writer_guard
+                                .write_okay(self.local_id, self.remote_id)
+                                .await?;
                         }
                         return Ok(payload);
                     } else {
@@ -104,7 +110,9 @@ impl<W: AsyncWrite + Unpin + Send + 'static> AdbStream<W> {
         if !self.is_closed {
             self.is_closed = true;
             let mut writer_guard = self.writer.lock().await;
-            writer_guard.write_close(self.local_id, self.remote_id).await?;
+            writer_guard
+                .write_close(self.local_id, self.remote_id)
+                .await?;
         }
         Ok(())
     }

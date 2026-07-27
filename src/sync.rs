@@ -5,16 +5,24 @@ use std::path::Path;
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
-pub const SYNC_CHUNK_SIZE: usize = 64 * 1024; // 64 KB
+/// Default chunk size (64 KB) used for stream file transfer.
+pub const SYNC_CHUNK_SIZE: usize = 64 * 1024;
 
+/// SYNC protocol command ID: SEND.
 pub const ID_SEND: [u8; 4] = *b"SEND";
+/// SYNC protocol command ID: RECV.
 pub const ID_RECV: [u8; 4] = *b"RECV";
+/// SYNC protocol command ID: DATA.
 pub const ID_DATA: [u8; 4] = *b"DATA";
+/// SYNC protocol command ID: DONE.
 pub const ID_DONE: [u8; 4] = *b"DONE";
+/// SYNC protocol response ID: OKAY.
 pub const ID_OKAY: [u8; 4] = *b"OKAY";
+/// SYNC protocol response ID: FAIL.
 pub const ID_FAIL: [u8; 4] = *b"FAIL";
+/// SYNC protocol command ID: QUIT.
 pub const ID_QUIT: [u8; 4] = *b"QUIT";
-
+/// Pushes a local file to `remote_path` over an open ADB SYNC stream.
 pub async fn push<W: AsyncWrite + Unpin + Send + 'static>(
     stream: &mut AdbStream<W>,
     src_path: impl AsRef<Path>,
@@ -29,6 +37,7 @@ pub async fn push<W: AsyncWrite + Unpin + Send + 'static>(
     push_bytes(stream, &file_data, remote_path, mode, last_modified_ms).await
 }
 
+/// Pushes raw in-memory bytes to `remote_path` over an open ADB SYNC stream.
 pub async fn push_bytes<W: AsyncWrite + Unpin + Send + 'static>(
     stream: &mut AdbStream<W>,
     data: &[u8],
@@ -65,6 +74,7 @@ pub async fn push_bytes<W: AsyncWrite + Unpin + Send + 'static>(
     read_response(stream).await
 }
 
+/// Pulls a file from `remote_path` on the device and saves it to `dst_path` on the local machine.
 pub async fn pull<W: AsyncWrite + Unpin + Send + 'static>(
     stream: &mut AdbStream<W>,
     dst_path: impl AsRef<Path>,
@@ -81,6 +91,7 @@ pub async fn pull<W: AsyncWrite + Unpin + Send + 'static>(
     }
 }
 
+/// Pulls a file from `remote_path` on the device directly into an in-memory byte buffer (`Vec<u8>`).
 pub async fn pull_bytes<W: AsyncWrite + Unpin + Send + 'static>(
     stream: &mut AdbStream<W>,
     remote_path: &str,

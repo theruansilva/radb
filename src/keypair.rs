@@ -8,13 +8,16 @@ use std::path::{Path, PathBuf};
 const KEY_LENGTH_BITS: usize = 2048;
 const KEY_LENGTH_WORDS: usize = 64; // 2048 / 32
 
+/// Manages ADB RSA keypairs for client-side authentication during connection handshake.
 #[derive(Clone)]
 pub struct AdbKeyPair {
     private_key: RsaPrivateKey,
+    /// Raw ADB formatted public key bytes (ready for AUTH_TYPE_RSA_PUBLIC packets).
     pub public_key_bytes: Vec<u8>,
 }
 
 impl AdbKeyPair {
+    /// Creates an `AdbKeyPair` from an existing RSA private key.
     pub fn new(private_key: RsaPrivateKey) -> Self {
         let public_key = RsaPublicKey::from(&private_key);
         let public_key_bytes = Self::generate_adb_public_key_bytes(&public_key);
@@ -24,6 +27,7 @@ impl AdbKeyPair {
         }
     }
 
+    /// Generates a new 2048-bit RSA keypair.
     pub fn generate() -> Result<Self> {
         let mut rng = rand::thread_rng();
         let private_key = RsaPrivateKey::new(&mut rng, KEY_LENGTH_BITS)
@@ -31,6 +35,7 @@ impl AdbKeyPair {
         Ok(Self::new(private_key))
     }
 
+    /// Reads an RSA private key from a PKCS#8 PEM file.
     pub fn read_from_file(private_key_path: impl AsRef<Path>) -> Result<Self> {
         let pem_str = fs::read_to_string(private_key_path)
             .map_err(|e| AdbError::Auth(format!("Failed to read private key file: {e}")))?;
@@ -38,6 +43,7 @@ impl AdbKeyPair {
             .map_err(|e| AdbError::Auth(format!("Failed to parse PKCS#8 private key: {e}")))?;
         Ok(Self::new(private_key))
     }
+
     /// Loads the default ADB keypair from `~/.android/adbkey`.
     ///
     /// If the key file exists, it will be loaded. If it does not exist,
@@ -60,6 +66,7 @@ impl AdbKeyPair {
         }
     }
 
+    /// Saves the RSA private key in PKCS#8 PEM format to a file.
     pub fn save_to_file(&self, private_key_path: impl AsRef<Path>) -> Result<()> {
         let pem = self
             .private_key
@@ -70,6 +77,7 @@ impl AdbKeyPair {
         fs::write(private_key_path, pem.as_str())?;
         Ok(())
     }
+    /// Signs an AUTH token challenge using RSA PKCS#1 v1.5 with SHA-1 digest info.
     pub fn sign_payload(&self, token: &[u8]) -> Result<Vec<u8>> {
         let sha1_digest_info: [u8; 15] = [
             0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2B, 0x0E, 0x03, 0x02, 0x1A, 0x05, 0x00, 0x04,

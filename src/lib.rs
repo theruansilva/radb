@@ -1,16 +1,46 @@
+#![warn(missing_docs)]
+//! # RADB - Rust Android Debug Bridge
+//!
+//! `radb` is a pure-Rust, asynchronous client implementation of the Android Debug Bridge (ADB) protocol.
+//! It provides high-level primitives for interacting with Android devices and emulators directly via TCP,
+//! eliminating the need for an external `adb` binary server in many scenarios.
+//!
+//! ## Key Features
+//!
+//! - **Direct Protocol Connection**: Connect directly to ADB daemon over TCP (e.g. `127.0.0.1:5555`).
+//! - **Automatic Authentication**: Built-in RSA key generation and loading (`~/.android/adbkey`).
+//! - **Emulator Discovery**: Discover and list active emulators automatically.
+//! - **Shell Execution**: Shell v1 and Shell v2 support with stdout, stderr, and exit codes.
+//! - **Touch & Gesture Simulation**: Tap, double tap, long press, swipe, drag & drop, key events, and typing.
+//! - **File Synchronization**: Fast `push` and `pull` using ADB Sync protocol.
+
+/// ADB connection management and session handling.
 pub mod connection;
+/// Protocol constants (commands, ports, timeouts, shell stream IDs).
 pub mod constants;
+/// Custom error and result types for RADB operations.
 pub mod error;
+/// TCP port forwarding from host to Android device.
 pub mod forwarding;
+/// RSA keypair generation, loading (`~/.android/adbkey`), and ADB token signing.
 pub mod keypair;
+/// Wire protocol ADB message structures and checksum calculation.
 pub mod message;
+/// AdbReader utility for deserializing ADB packets from an async stream.
 pub mod message_queue;
+/// Asynchronous message queue and reader background task dispatching.
 pub mod reader;
+/// Local ADB server (port 5037) communication and process management.
 pub mod server;
+/// Shell v1 and Shell v2 command execution helpers.
 pub mod shell;
+/// Stream multiplexing layer for reading and writing data over open ADB channels.
 pub mod stream;
+/// File synchronization service (push, pull, push_bytes, pull_bytes).
 pub mod sync;
+/// High-level touch, swipe, gesture, and input event simulation extensions.
 pub mod touch;
+/// AdbWriter utility for serializing ADB packets to an async stream.
 pub mod writer;
 
 use async_trait::async_trait;
@@ -29,13 +59,22 @@ use tokio::sync::Mutex;
 pub use touch::{KeyCode, RadbTouchExt, SwipeDirection};
 use writer::AdbWriter;
 
+/// Default transport stream type for active TCP ADB connections.
 pub type TransportStream = AdbStream<OwnedWriteHalf>;
 
+/// Core trait providing standard ADB operations for an Android device or emulator.
 #[async_trait]
 pub trait Radb: Send + Sync {
+    /// Opens a custom raw ADB stream to a specified destination service (e.g. `"shell,v2,raw:..."`, `"sync:"`, `"tcp:8080"`).
     async fn open(&self, destination: &str) -> Result<TransportStream>;
+
+    /// Checks whether the connected device advertises support for a specific feature (e.g., `"shell_v2"`, `"cmd"`).
     fn supports_feature(&self, feature: &str) -> bool;
+
+    /// Executes a shell command on the remote device, automatically selecting `shell_v2` if supported.
     async fn shell(&self, command: &str) -> Result<AdbShellResponse>;
+
+    /// Pushes a local file to the remote device filesystem via ADB Sync.
     async fn push(
         &self,
         src: &Path,
@@ -43,13 +82,24 @@ pub trait Radb: Send + Sync {
         mode: u32,
         last_modified_ms: u64,
     ) -> Result<SyncResult>;
+
+    /// Pulls a remote file from the device to the local filesystem via ADB Sync.
     async fn pull(&self, dst: &Path, remote_path: &str) -> Result<SyncResult>;
+
+    /// Installs an APK file onto the remote device using Android's package manager.
     async fn install(&self, apk_path: &Path, options: &[&str]) -> Result<InstallResult>;
+
+    /// Uninstalls a package by name from the remote device.
     async fn uninstall(&self, package_name: &str) -> Result<UninstallResult>;
+
+    /// Restarts the ADB daemon on the target device with root privileges.
     async fn root(&self) -> Result<RootResult>;
+
+    /// Restarts the ADB daemon on the target device without root privileges.
     async fn unroot(&self) -> Result<RootResult>;
 }
 
+/// Primary implementation of the `Radb` trait for direct TCP ADB connections.
 pub struct RadbImpl {
     host: String,
     port: u16,
@@ -58,6 +108,7 @@ pub struct RadbImpl {
 }
 
 impl RadbImpl {
+    /// Connects directly to an ADB device at `host:port` using a specified keypair, or the default `~/.android/adbkey`.
     pub async fn connect(host: &str, port: u16, key_pair: Option<AdbKeyPair>) -> Result<Self> {
         let key_pair = key_pair
             .or_else(|| AdbKeyPair::read_default().ok())
@@ -72,6 +123,7 @@ impl RadbImpl {
         Ok(radb)
     }
 
+    /// Scans standard emulator ports (5555..5683) on `host` and returns a client for the first responsive device.
     pub async fn discover(host: &str, key_pair: Option<AdbKeyPair>) -> Result<Option<Self>> {
         let key_pair = key_pair.or_else(|| AdbKeyPair::read_default().ok());
         for port in (MIN_EMULATOR_PORT..=MAX_EMULATOR_PORT).step_by(2) {
@@ -84,6 +136,7 @@ impl RadbImpl {
         Ok(None)
     }
 
+    /// Scans standard emulator ports (5555..5683) on `host` and returns clients for all active devices found.
     pub async fn list(host: &str, key_pair: Option<AdbKeyPair>) -> Result<Vec<Self>> {
         let key_pair = key_pair.or_else(|| AdbKeyPair::read_default().ok());
         let mut devices = Vec::new();

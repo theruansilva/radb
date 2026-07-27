@@ -4,19 +4,25 @@ use crate::stream::AdbStream;
 use bytes::{Buf, BytesMut};
 use tokio::io::AsyncWrite;
 
+/// Response output and exit status from a shell command execution.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AdbShellResponse {
+    /// Standard output (stdout) string from shell command execution.
     pub output: String,
+    /// Standard error (stderr) string from shell v2 command execution.
     pub error_output: String,
+    /// Exit status code returned by the shell process (0 on success).
     pub exit_code: i32,
 }
 
 impl AdbShellResponse {
+    /// Returns concatenated stdout and stderr output strings.
     pub fn all_output(&self) -> String {
         format!("{}{}", self.output, self.error_output)
     }
 }
 
+/// Reads data chunks from an open shell stream and parses output using Shell v1 or Shell v2 protocol format.
 pub async fn execute_shell<W: AsyncWrite + Unpin + Send + 'static>(
     stream: &mut AdbStream<W>,
     is_v2: bool,

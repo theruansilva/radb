@@ -11,16 +11,21 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::Mutex;
 
+/// Low-level handle managing ADB protocol handshake, authentication, and stream creation.
 pub struct AdbConnection<W> {
     writer: Arc<Mutex<AdbWriter<W>>>,
     message_queue: MessageQueue,
     next_local_id: AtomicU32,
+    /// Set of feature flags supported by the connected device (e.g. `"shell_v2"`, `"cmd"`).
     pub supported_features: HashSet<String>,
+    /// Protocol version returned by the device during connection handshake.
     pub version: u32,
+    /// Maximum payload size (in bytes) accepted by the remote device.
     pub max_payload_size: usize,
 }
 
 impl<W: AsyncWrite + Unpin + Send + 'static> AdbConnection<W> {
+    /// Performs ADB handshake over reader and writer halves, negotiating authentication and supported features.
     pub async fn connect<R: AsyncRead + Unpin + Send + 'static>(
         mut reader: AdbReader<R>,
         mut writer: AdbWriter<W>,
@@ -76,6 +81,7 @@ impl<W: AsyncWrite + Unpin + Send + 'static> AdbConnection<W> {
         })
     }
 
+    /// Opens a new multiplexed ADB stream to a target destination service.
     pub async fn open(&self, destination: &str) -> Result<AdbStream<W>> {
         let local_id = self.next_local_id.fetch_add(1, Ordering::SeqCst);
         let mut rx = self.message_queue.start_listening(local_id).await?;
@@ -122,6 +128,7 @@ impl<W: AsyncWrite + Unpin + Send + 'static> AdbConnection<W> {
         }
     }
 
+    /// Returns `true` if the device supports the specified feature flag.
     pub fn supports_feature(&self, feature: &str) -> bool {
         self.supported_features.contains(feature)
     }

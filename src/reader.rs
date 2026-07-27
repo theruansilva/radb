@@ -3,20 +3,25 @@ use crate::message::AdbMessage;
 use bytes::BytesMut;
 use tokio::io::{AsyncRead, AsyncReadExt};
 
+/// Helper for reading and parsing raw ADB wire messages from an async input stream.
 pub struct AdbReader<R> {
     reader: R,
 }
 
 impl<R: AsyncRead + Unpin> AdbReader<R> {
+    /// Wraps an async reader in an `AdbReader`.
     pub fn new(reader: R) -> Self {
         Self { reader }
     }
 
+    /// Reads the next complete 24-byte header and payload from the underlying reader.
     pub async fn read_message(&mut self) -> Result<AdbMessage> {
         let command = match self.reader.read_u32_le().await {
             Ok(cmd) => cmd,
             Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
-                return Err(AdbError::ConnectionClosed("EOF reading command header".into()));
+                return Err(AdbError::ConnectionClosed(
+                    "EOF reading command header".into(),
+                ));
             }
             Err(e) => return Err(AdbError::Io(e)),
         };

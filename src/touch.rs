@@ -8,25 +8,39 @@ use tokio::time::sleep;
 /// Direction for swipe operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SwipeDirection {
+    /// Swipe upward.
     Up,
+    /// Swipe downward.
     Down,
+    /// Swipe to the left.
     Left,
+    /// Swipe to the right.
     Right,
 }
 
-/// Keycodes commonly used for system key events.
+/// Keycodes commonly used for Android system key events.
 pub struct KeyCode;
 
 impl KeyCode {
+    /// Home button keycode (`KEYCODE_HOME`).
     pub const HOME: &'static str = "KEYCODE_HOME";
+    /// Back button keycode (`KEYCODE_BACK`).
     pub const BACK: &'static str = "KEYCODE_BACK";
+    /// App switch/Recents button keycode (`KEYCODE_APP_SWITCH`).
     pub const APP_SWITCH: &'static str = "KEYCODE_APP_SWITCH";
+    /// Power button keycode (`KEYCODE_POWER`).
     pub const POWER: &'static str = "KEYCODE_POWER";
+    /// Volume up keycode (`KEYCODE_VOLUME_UP`).
     pub const VOLUME_UP: &'static str = "KEYCODE_VOLUME_UP";
+    /// Volume down keycode (`KEYCODE_VOLUME_DOWN`).
     pub const VOLUME_DOWN: &'static str = "KEYCODE_VOLUME_DOWN";
+    /// Enter keycode (`KEYCODE_ENTER`).
     pub const ENTER: &'static str = "KEYCODE_ENTER";
+    /// Tab keycode (`KEYCODE_TAB`).
     pub const TAB: &'static str = "KEYCODE_TAB";
+    /// Space keycode (`KEYCODE_SPACE`).
     pub const SPACE: &'static str = "KEYCODE_SPACE";
+    /// Delete/Backspace keycode (`KEYCODE_DEL`).
     pub const DEL: &'static str = "KEYCODE_DEL";
 }
 
