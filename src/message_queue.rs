@@ -11,7 +11,7 @@ use tracing::{debug, error};
 type StreamSender = mpsc::Sender<Result<AdbMessage>>;
 type StreamReceiver = mpsc::Receiver<Result<AdbMessage>>;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct MessageQueue {
     streams: Arc<Mutex<HashMap<u32, StreamSender>>>,
 }
@@ -77,11 +77,5 @@ impl MessageQueue {
                 }
             }
         });
-    }
-}
-
-impl Default for MessageQueue {
-    fn default() -> Self {
-        Self::new()
     }
 }
