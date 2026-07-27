@@ -2,7 +2,7 @@
 
 # RADB — Rust Android Debug Bridge
 
-[![Crates.io](https://img.shields.io/badge/crates.io-v0.1.0-blue.svg)](https://crates.io/crates/radb-core)
+[![Crates.io](https://img.shields.io/badge/crates.io-v1.0.0-blue.svg)](https://crates.io/crates/radb-core)
 [![Documentation](https://docs.rs/radb-core/badge.svg)](https://docs.rs/radb-core)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -46,7 +46,7 @@ Add `radb-core` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-radb-core = "0.1.0"
+radb-core = "1.0.0"
 tokio = { version = "1.43", features = ["full"] }
 ```
 
@@ -54,7 +54,7 @@ Or import it with the `radb` alias:
 
 ```toml
 [dependencies]
-radb = { package = "radb-core", version = "0.1.0" }
+radb = { package = "radb-core", version = "1.0.0" }
 tokio = { version = "1.43", features = ["full"] }
 ```
 
