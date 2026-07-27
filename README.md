@@ -1,3 +1,5 @@
+<div align="center">
+
 # RADB — Rust Android Debug Bridge
 
 [![Crates.io](https://img.shields.io/badge/crates.io-v0.1.0-blue.svg)](https://crates.io/crates/radb)
@@ -6,8 +8,9 @@
 
 **RADB** (`radb`) is a 100% pure-Rust, asynchronous library (built on the `tokio` ecosystem) for high-performance communication with the **Android Debug Bridge (ADB)** protocol.
 
-With `radb`, you can connect directly to ADB daemons on Android devices or emulators via TCP (e.g., port `5555`), execute shell commands, simulate complex touch gestures, transfer files (`push`/`pull`), install/uninstall APKs, interact with the local ADB server, and much more — all without relying on an external `adb` binary at runtime.
+</div>
 
+With `radb`, you can connect directly to ADB daemons on Android devices or emulators via TCP (e.g., port `5555`), execute shell commands, simulate complex touch gestures, transfer files (`push`/`pull`), install/uninstall APKs, interact with the local ADB server, and much more — all without relying on an external `adb` binary at runtime.
 ---
 
 ## 🚀 Features
