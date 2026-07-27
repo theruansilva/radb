@@ -1,5 +1,5 @@
 [package]
-name = "radb"
+name = "radb-core"
 version = "0.1.0"
 edition = "2024"
 authors = ["Ruan Silva <progmruansilva@gmail.com>"]

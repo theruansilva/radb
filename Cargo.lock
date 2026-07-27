@@ -330,7 +330,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "radb"
+name = "radb-core"
 version = "0.1.0"
 dependencies = [
  "async-trait",

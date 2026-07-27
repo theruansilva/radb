@@ -2,8 +2,8 @@
 
 # RADB — Rust Android Debug Bridge
 
-[![Crates.io](https://img.shields.io/badge/crates.io-v0.1.0-blue.svg)](https://crates.io/crates/radb)
-[![Documentation](https://docs.rs/radb/badge.svg)](https://docs.rs/radb)
+[![Crates.io](https://img.shields.io/badge/crates.io-v0.1.0-blue.svg)](https://crates.io/crates/radb-core)
+[![Documentation](https://docs.rs/radb-core/badge.svg)](https://docs.rs/radb-core)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **RADB** (`radb`) is a 100% pure-Rust, asynchronous library (built on the `tokio` ecosystem) for high-performance communication with the **Android Debug Bridge (ADB)** protocol.
@@ -42,11 +42,19 @@ With `radb`, you can connect directly to ADB daemons on Android devices or emula
 
 ## 📦 Installation
 
-Add `radb` to your `Cargo.toml`:
+Add `radb-core` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-radb = "0.1.0"
+radb-core = "0.1.0"
+tokio = { version = "1.43", features = ["full"] }
+```
+
+Or import it with the `radb` alias:
+
+```toml
+[dependencies]
+radb = { package = "radb-core", version = "0.1.0" }
 tokio = { version = "1.43", features = ["full"] }
 ```
 
