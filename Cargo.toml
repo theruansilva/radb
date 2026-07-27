@@ -2,7 +2,12 @@
 name = "radb"
 version = "0.1.0"
 edition = "2024"
-
+authors = ["Ruan Silva <progmruansilva@gmail.com>"]
+license = "MIT"
+description = "Pure Rust implementation of the Android Debug Bridge (ADB) protocol"
+readme = "README.md"
+keywords = ["adb", "android", "emulator", "automation", "tokio"]
+categories = ["development-tools", "asynchronous"]
 [dependencies]
 tokio = { version = "1.43", features = ["full"] }
 bytes = "1.10"
